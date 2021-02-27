@@ -28,7 +28,7 @@ text = gettext.translation("commands", localedir=local_path, languages=[config["
 text.install()
 
 
-class Lara():
+class DeeR():
     def __init__(self):
         self.log = logging.getLogger(__name__)
 
@@ -152,11 +152,11 @@ class Lara():
 
 
 if __name__ == "__main__":
-    lara = Lara()
-    lara.connect()
+    deer = DeeR()
+    deer.connect()
     try:
-        lara.run()
+        deer.run()
     except KeyboardInterrupt:
         pass
     finally:
-        lara.disconncet()
+        deer.disconncet()
