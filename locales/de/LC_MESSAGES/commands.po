@@ -1,0 +1,45 @@
+# Mumble DeepSpeech Bot.
+# Copyright (C) 2020 Andreas Gocht
+# Andreas Gocht <andreas.gocht@gmail.com>, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.1\n"
+"POT-Creation-Date: 2021-02-25 21:14+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Andreas Gocht <andreas.gocht@gmail.com>\n"
+"Language-Team: None <test@test.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#: commands.py:18
+msgid "Sorry, I could not understand you.<br />Please ask me for my included vocabulary."
+msgstr "Sorry, das hab ich nicht verstanden.<br />Frag mich doch nach meinem Wotschatz"
+
+#: commands.py:36 commands.py:51
+msgid "home"
+msgstr "heimwaerts"
+
+#: commands.py:38 commands.py:51
+msgid "follow"
+msgstr "folge"
+
+#: commands.py:45 commands.py:51
+msgid "vocabulary"
+msgstr "wortschatz"
+
+#: commands.py:59
+msgid "home ... return to home channel"
+msgstr "heimwaerts ... Zum Heim Channal zurückkehren"
+
+#: commands.py:60
+msgid "vocabulary ... my included vocabulary"
+msgstr "wortschatz ... mein Wortschatz"
+
+#: commands.py:61
+msgid "follow @username ... follow username"
+msgstr "folge @username ... folge username"
+
