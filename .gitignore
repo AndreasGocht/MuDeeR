@@ -1,5 +1,10 @@
 config.cfg
-
+*.wav
+*.wav.txt
+*.pbmm
+*.scorer
+*.tar.gz
+skills/weisheiten/weisheiten.json
 __pycache__/
 
 # Development env
