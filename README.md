@@ -1,7 +1,7 @@
 # MuDeer - A Mumble Bot using DeepSpeech for voice recognition
 
-MuDeeR is a Mumble Bot, which uses pymumble and DeepSpeech.
-MuDeeR relates either to "My Dear" or to "**MU**mble **DEE**pspeech **R**ecognition". However you whish :smile: .
+MuDeer is a Mumble Bot, which uses pymumble and DeepSpeech.
+MuDeer relates either to "My Dear" or to "**MU**mble **DEE**pspeech **R**ecognition". However you whish :smile: .
 
 You need to rename and adjust the `config.default.cfg` to `config.cfg`.
 
