@@ -8,22 +8,30 @@ from pymumble_py3 import mumble_pb2
 
 
 class ComMumble(threading.Thread):
-    def __init__(self, user_name, host, port, home_channel, speech_return_delay=0.1, pymumble_loop_rate=0.05):
+    def __init__(self, com_id, user_name, queue_in, queue_out, settings: dict):
         super().__init__()
         self.log = logging.getLogger(__name__)
 
+        self.com_id = com_id
+
+        # name
         self.user_name = user_name
         self.bot_name = self.user_name + "Bot"
         self.tag = "@" + self.user_name
         self.tag_len = len(self.tag)
-        self.host = host
-        self.port = port
-        self.home = home_channel
-        self.speech_return_delay = speech_return_delay
-        self.pymumble_loop_rate = pymumble_loop_rate
 
-        self.commands = queue.Queue()
+        # in and out
+        self.queue_in = queue_in  # queue.Queue()
+        self.queue_out = queue_out
 
+        # settings
+        self.host = settings["host"]
+        self.port = settings["port"]
+        self.home = settings["home_channel"]
+        self.speech_return_delay = settings.get("speech_return_delay", 0.1)
+        self.pymumble_loop_rate = settings.get("speech_return_delay", 0.05)
+
+        # set up
         self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port, debug=False)
         self.bot.set_receive_sound(1)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.get_callback_text)
@@ -73,12 +81,17 @@ class ComMumble(threading.Thread):
 
     def get_callback_user(self, user, changes=None):
         self.log.debug("received user change: {}".format(user))
-        self.commands.put_nowait(("user", user))
+        self.queue_in.put(("user", user))
 
     def get_callback_text(self, text_message: mumble_pb2.TextMessage):
         if (self.tag == text_message.message[:self.tag_len]):
             self.log.debug("received command: {}".format(text_message.message))
-            self.commands.put_nowait(("message", text_message))
+            res = ("txt", text_message)
+            user = text_message.actor
+            channel = text_message.channel_id
+
+            # TODO From Here
+            self.queue_in.put(("message", text_message))
 
     def get_callback_sound(self, user, soundchunk):
         # I am pretty sure the GIL saves us:
@@ -125,7 +138,7 @@ class ComMumble(threading.Thread):
             else:
                 data = numpy.concatenate(self.stream_frames[session_id], axis=0)
                 self.stream_frames[session_id] = []
-                self.commands.put_nowait(("sound", (self.stream_users[session_id], data)))
+                self.queue_in.put(("sound", (self.stream_users[session_id], data)))
 
                 # # https://stackoverflow.com/questions/30619740/downsampling-wav-audio-file
                 # number_of_samples = round(len(data) * float(16000) / 48000)
@@ -134,21 +147,6 @@ class ComMumble(threading.Thread):
                 # self.log.debug("data {} {}".format(data.min(), data.max()))
                 # text = self.deepspeech.stt(data)
                 # self.log.debug("Understood: {}".format(text))
-
-    def get_next_command(self, timeout):
-        """Waits for the next command.
-
-        @param timeout befor the command returns an None
-        @return returns one of the following commands:
-            ("message", <message_content>)
-            ("user", <user_changes>)
-            ("sound", (<user>, <numpy_sound_chunk>))
-        """
-        try:
-            command = self.commands.get(timeout=timeout)
-        except queue.Empty:
-            command = None
-        return command
 
     def run(self):
         self.running = True
