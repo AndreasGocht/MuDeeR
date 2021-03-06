@@ -28,7 +28,7 @@ text = gettext.translation("commands", localedir=local_path, languages=[config["
 text.install()
 
 
-class DeeR():
+class MuDeer():
     def __init__(self):
         self.log = logging.getLogger(__name__)
 
@@ -152,11 +152,11 @@ class DeeR():
 
 
 if __name__ == "__main__":
-    deer = DeeR()
-    deer.connect()
+    mu_deer = MuDeer()
+    mu_deer.connect()
     try:
-        deer.run()
+        mu_deer.run()
     except KeyboardInterrupt:
         pass
     finally:
-        deer.disconncet()
+        mu_deer.disconncet()
