@@ -1,0 +1,2 @@
+recursive-include mudeer/etc *.cfg 
+recursive-include mudeer/locales *.pot *.po *.mo 

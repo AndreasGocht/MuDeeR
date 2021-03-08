@@ -1,35 +1,16 @@
-import configparser
 import logging
 import time
 import collections
 import traceback
-import gettext
 import os
 
-import com.com_mumble as com_mumble
-import voice.voice_deep_speech as voice_deep_speech
-import commands
-
-config = configparser.ConfigParser()
-
-try:
-    with open("config.cfg") as f:
-        config.read_file(f)
-except FileNotFoundError as e:
-    logging.fatal("did not find config file:\n{}".format(e))
-    exit(-1)
-
-logging.basicConfig(level=config["logging"].get("level", "INFO"))
-
-local_path = os.path.realpath(__file__)
-local_path = os.path.split(local_path)[0] + "/locales"
-
-text = gettext.translation("commands", localedir=local_path, languages=[config["server"]["lang"]], fallback=True)
-text.install()
+import mudeer.com.com_mumble as com_mumble
+import mudeer.voice.voice_deep_speech as voice_deep_speech
+import mudeer.commands
 
 
 class MuDeer():
-    def __init__(self):
+    def __init__(self, config):
         self.log = logging.getLogger(__name__)
 
         self.name = config["server"]["user"]
@@ -149,14 +130,3 @@ class MuDeer():
                     self.process_users(item)
                 elif t == "sound":
                     self.process_sound(*item)
-
-
-if __name__ == "__main__":
-    mu_deer = MuDeer()
-    mu_deer.connect()
-    try:
-        mu_deer.run()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        mu_deer.disconncet()

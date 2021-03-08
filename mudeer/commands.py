@@ -1,7 +1,7 @@
 import logging
 import re
 
-import skills
+import mudeer.skills
 
 
 class Command():
