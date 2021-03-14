@@ -3,8 +3,9 @@ import time
 import collections
 import traceback
 import os
+import queue
 
-import mudeer.com.com_mumble as com_mumble
+import mudeer.com
 import mudeer.voice.voice_deep_speech as voice_deep_speech
 import mudeer.commands
 
@@ -13,31 +14,30 @@ class MuDeer():
     def __init__(self, config):
         self.log = logging.getLogger(__name__)
 
-        self.name = config["server"]["user"]
-        self.log.debug("Init Mumble")
-        self.com = com_mumble.ComMumble(
-            self.name,
-            config["server"]["host"],
-            int(config["server"]["port"]),
-            config["server"]["home_channel"])
-        self.tag = self.com.get_tag()
-        self.tag_len = len(self.tag)
+        self.name = config["etc"]["name"]
 
         self.log.debug("Init DeepSpeech")
-        self.voice = voice_deep_speech.VoiceDeepSpeech(
+        self.stt = voice_deep_speech.VoiceDeepSpeech(
             config["deepspeech"]["model"],
             config["deepspeech"]["scorer"],
             config["deepspeech"]["record_wav"].lower() == "true",
             config["deepspeech"]["record_user"].split(","))
 
+        self.log.debug("Init Mumble")
+
+        self.queue_in = queue.Queue()
+        self.queue_out = queue.Queue()
+        self.coms = mudeer.com.Coms({"mumble": config["mumble"]}, self.name,
+                                    self.stt, self.queue_in, self.queue_out)
+        self.tag = self.com.get_tag()
+        self.tag_len = len(self.tag)
+
         self.commands = commands.Command([self.name, self.tag])
         self.commands_to_process = collections.deque()
 
         available_commands = self.commands.get_available_commands()
-        self.voice.add_hot_words(available_commands)
-        self.voice.add_hot_words([self.name.lower()], 20)
-
-        self.follow = config["users"].get("follow", None)
+        self.stt.add_hot_words(available_commands)
+        self.stt.add_hot_words([self.name.lower()], 20)
 
     def connect(self):
         self.com.start()
@@ -46,19 +46,6 @@ class MuDeer():
 
     def disconncet(self):
         self.com.disconncet()
-
-    def update_follow(self, user):
-        if user:
-            self.follow = user["name"]
-        else:
-            self.follow = None
-        self.log.debug("follow user: {}".format(self.follow))
-
-        if self.follow is None:
-            self.com.move_home()
-            self.log.debug("Move Home")
-        else:
-            self.com.move_to_id(user["channel_id"])
 
         # TODO save changes
 
@@ -85,8 +72,6 @@ class MuDeer():
                         self.com.send_to_my_channel(item)  # quick fix
                 elif command == "error":
                     self.send_error(channel_id, item)
-                elif command == "follow":
-                    self.update_follow(item)
                 elif command == "wait":
                     time.sleep(item)
                     return  # return to main loop for any processing
@@ -103,10 +88,6 @@ class MuDeer():
         self.excecute_command(new_commands, channel_id=item.channel_id)
 
     def process_users(self, user):
-        if self.follow:
-            if user["name"] == self.follow:
-                self.log.debug("follow user: {}".format(user))
-                self.com.move_to_id(user["channel_id"])
         new_commands = self.commands.process_user(user)
         self.log.debug("User commands {}".format(new_commands))
         self.excecute_command(new_commands)

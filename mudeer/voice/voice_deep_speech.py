@@ -31,11 +31,11 @@ class VoiceDeepSpeech():
             self.log.debug("Add word \"{}\"".format(word))
             self.deepspeech.addHotWord(word, boost)
 
-    def process_voice(self, user, sound_chunk):
+    def process_voice(self, user, sound_chunk, sample_rate: int):
         # resample for deepspeech
         self.log.debug("Got Voice from {}".format(user["name"]))
 
-        number_of_samples = round(len(sound_chunk) * float(16000) / 48000)
+        number_of_samples = round(len(sound_chunk) * float(16000) / sample_rate)
         sound_chunk = scipy.signal.resample(sound_chunk, number_of_samples)
         sound_chunk = numpy.around(sound_chunk).astype(numpy.int16)
 

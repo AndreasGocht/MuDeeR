@@ -4,21 +4,27 @@ import logging
 import queue
 import numpy
 import threading
+
 from pymumble_py3 import mumble_pb2
+
+import mudeer.message
 
 
 class ComMumble(threading.Thread):
-    def __init__(self, com_id, user_name, queue_in, queue_out, settings: dict):
+    def __init__(self, com_id: int, settings: dict, name: str, stt, queue_in, queue_out):
         super().__init__()
         self.log = logging.getLogger(__name__)
 
         self.com_id = com_id
 
         # name
-        self.user_name = user_name
+        self.user_name = name
         self.bot_name = self.user_name + "Bot"
         self.tag = "@" + self.user_name
         self.tag_len = len(self.tag)
+
+        # stt
+        self.stt = stt
 
         # in and out
         self.queue_in = queue_in  # queue.Queue()
@@ -30,6 +36,7 @@ class ComMumble(threading.Thread):
         self.home = settings["home_channel"]
         self.speech_return_delay = settings.get("speech_return_delay", 0.1)
         self.pymumble_loop_rate = settings.get("speech_return_delay", 0.05)
+        self.follow = setting.get("follow", None)
 
         # set up
         self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port, debug=False)
@@ -79,19 +86,37 @@ class ComMumble(threading.Thread):
     def move_home(self):
         self.move_to_name(self.home)
 
+    def update_follow(self, user):
+        if user:
+            self.follow = user["name"]
+        else:
+            self.follow = None
+        self.log.debug("follow user: {}".format(self.follow))
+
+        if self.follow is None:
+            self.move_home()
+            self.log.debug("Move Home")
+        else:
+            self.move_to_id(user["channel_id"])
+
     def get_callback_user(self, user, changes=None):
         self.log.debug("received user change: {}".format(user))
-        self.queue_in.put(("user", user))
+        if self.follow:
+            if user["name"] == self.follow:
+                self.log.debug("follow user: {}".format(user))
+                self.com.move_to_id(user["channel_id"])
+        message = mudeer.message.In(self.com_id, user)
+        self.queue_in.put(message)
 
     def get_callback_text(self, text_message: mumble_pb2.TextMessage):
         if (self.tag == text_message.message[:self.tag_len]):
             self.log.debug("received command: {}".format(text_message.message))
-            res = ("txt", text_message)
             user = text_message.actor
             channel = text_message.channel_id
 
             # TODO From Here
-            self.queue_in.put(("message", text_message))
+            message = mudeer.message.In(self.com_id, user, text_message, channel)
+            self.queue_in.put(message)
 
     def get_callback_sound(self, user, soundchunk):
         # I am pretty sure the GIL saves us:
@@ -138,15 +163,9 @@ class ComMumble(threading.Thread):
             else:
                 data = numpy.concatenate(self.stream_frames[session_id], axis=0)
                 self.stream_frames[session_id] = []
-                self.queue_in.put(("sound", (self.stream_users[session_id], data)))
-
-                # # https://stackoverflow.com/questions/30619740/downsampling-wav-audio-file
-                # number_of_samples = round(len(data) * float(16000) / 48000)
-                # data = scipy.signal.resample(data, number_of_samples)
-                # data = numpy.around(data).astype(numpy.int16)
-                # self.log.debug("data {} {}".format(data.min(), data.max()))
-                # text = self.deepspeech.stt(data)
-                # self.log.debug("Understood: {}".format(text))
+                text = self.stt.process_voice(self.stream_users[session_id], data, 48000)
+                message = mudeer.message.In(self.com_id, self.stream_users[session_id], text, None, data)
+                self.queue_in.put(message)
 
     def run(self):
         self.running = True
