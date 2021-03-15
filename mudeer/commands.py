@@ -1,7 +1,16 @@
 import logging
 import re
 
-import mudeer.skills
+import mudeer.skills as skills
+
+import enum
+
+
+class Commands(enum.Enum):
+    """
+    available commands
+    """
+    MOVE_CHANNEL = 1
 
 
 class Command():

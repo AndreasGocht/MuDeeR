@@ -8,9 +8,10 @@ import threading
 from pymumble_py3 import mumble_pb2
 
 import mudeer.message
+from mudeer.commands import Commands
 
 
-class ComMumble(threading.Thread):
+class Mumble(threading.Thread):
     def __init__(self, com_id: int, settings: dict, name: str, stt, queue_in, queue_out):
         super().__init__()
         self.log = logging.getLogger(__name__)
@@ -31,12 +32,12 @@ class ComMumble(threading.Thread):
         self.queue_out = queue_out
 
         # settings
-        self.host = settings["host"]
-        self.port = settings["port"]
-        self.home = settings["home_channel"]
-        self.speech_return_delay = settings.get("speech_return_delay", 0.1)
-        self.pymumble_loop_rate = settings.get("speech_return_delay", 0.05)
-        self.follow = setting.get("follow", None)
+        self.host = settings.get("host", "")
+        self.port = settings.getint("port", 64738)
+        self.home = settings.get("home_channel", "Bot Home")
+        self.speech_return_delay = settings.getfloat("speech_return_delay", 0.1)
+        self.pymumble_loop_rate = settings.getfloat("pymumble_loop_rate", 0.05)
+        self.follow = settings.get("follow", None)
 
         # set up
         self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port, debug=False)
@@ -46,6 +47,7 @@ class ComMumble(threading.Thread):
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_USERCREATED, self.get_callback_user)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_SOUNDRECEIVED, self.get_callback_sound)
 
+        self.stream_lock = threading.RLock()
         self.stream_frames = {}
         self.stream_last_frames = {}
         self.stream_users = {}
@@ -57,6 +59,7 @@ class ComMumble(threading.Thread):
         self.bot.start()
         self.bot.is_ready()
         self.bot.set_loop_rate(self.pymumble_loop_rate)
+        self.start()
 
         self.log.debug("loop rate at: {}".format(self.bot.get_loop_rate()))
         self.move_home()
@@ -64,6 +67,11 @@ class ComMumble(threading.Thread):
     def disconncet(self):
         self.running = False
         self.bot.stop()
+
+    def process(self, message: mudeer.message.Out):
+        if message.command == Commands.MOVE_CHANNEL:
+            self.move_to_id(message.channel)
+            # check if this works
 
     def move_to_name(self, channel_name):
         try:
@@ -104,7 +112,8 @@ class ComMumble(threading.Thread):
         if self.follow:
             if user["name"] == self.follow:
                 self.log.debug("follow user: {}".format(user))
-                self.com.move_to_id(user["channel_id"])
+                message = mudeer.message.Out(self.com_id, Commands.MOVE_CHANNEL, None, None, user["channel_id"])
+                self.queue_out.put(message)
         message = mudeer.message.In(self.com_id, user)
         self.queue_in.put(message)
 
@@ -124,12 +133,13 @@ class ComMumble(threading.Thread):
         session_id = user["session"]
         #self.log.debug("Got something from {}".format(user["name"]))
 
-        if session_id not in self.stream_frames:
-            self.stream_frames[session_id] = []
-            self.stream_users[session_id] = user
+        with self.stream_lock:
+            if session_id not in self.stream_frames:
+                self.stream_frames[session_id] = []
+                self.stream_users[session_id] = user
 
-        self.stream_frames[session_id].append(numpy.frombuffer(soundchunk.pcm, numpy.int16))
-        self.stream_last_frames[session_id] = time.time()  # soundchunk.timestamp does not work
+            self.stream_frames[session_id].append(numpy.frombuffer(soundchunk.pcm, numpy.int16))
+            self.stream_last_frames[session_id] = time.time()  # soundchunk.timestamp does not work
 
     def send_to_channels(self, channels, message):
         send_message = ""
@@ -156,16 +166,25 @@ class ComMumble(threading.Thread):
     def check_audio(self):
         # I am pretty sure the GIL saves us:
         # `self.stream_frames` etc. is accessed by two threads (e.g. `get_callback_sound`)
+        # obviously it isn't ... trying some locking. It might happen, that the dict `self.stream_last_frames`
+        # is changed during processing.
+        # The lock avoids this, but this does still not look very good.
         cur_time = time.time()
-        for session_id, old_time in self.stream_last_frames.items():
-            if (cur_time - old_time) < self.speech_return_delay or self.stream_frames[session_id] == []:
-                continue
-            else:
-                data = numpy.concatenate(self.stream_frames[session_id], axis=0)
-                self.stream_frames[session_id] = []
-                text = self.stt.process_voice(self.stream_users[session_id], data, 48000)
-                message = mudeer.message.In(self.com_id, self.stream_users[session_id], text, None, data)
-                self.queue_in.put(message)
+        to_process = []
+        with self.stream_lock:
+            for session_id, old_time in self.stream_last_frames.items():
+                if (cur_time - old_time) < self.speech_return_delay or self.stream_frames[session_id] == []:
+                    continue
+                else:
+                    data = numpy.concatenate(self.stream_frames[session_id], axis=0)
+                    self.stream_frames[session_id] = []
+                    user = self.stream_users[session_id]
+                    to_process.append((data, user))
+
+        for data, user in to_process:
+            text = self.stt.process_voice(user, data, 48000)
+            message = mudeer.message.In(self.com_id, user, text, None, data)
+            self.queue_in.put(message)
 
     def run(self):
         self.running = True

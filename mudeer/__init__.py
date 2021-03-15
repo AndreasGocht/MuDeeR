@@ -3,7 +3,7 @@ import pkg_resources
 import gettext
 import logging
 
-import mudeer.mu_deer
+from mudeer.main import MuDeer
 
 
 def main():
@@ -20,10 +20,10 @@ def main():
 
     logging.basicConfig(level=config["logging"].get("level", "INFO"))
 
-    text = gettext.translation("commands", localedir=local_path, languages=[config["server"]["lang"]], fallback=True)
+    text = gettext.translation("commands", localedir=local_path, languages=[config["etc"]["lang"]], fallback=True)
     text.install()
 
-    deer = mudeer.mu_deer.MuDeer(config)
+    deer = MuDeer(config)
     deer.connect()
     try:
         deer.run()
