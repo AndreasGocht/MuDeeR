@@ -22,3 +22,18 @@ data.audio == [optional] depending on command
 Out = collections.namedtuple("Out",
                              ["com_target", "command", "user", "message", "channel", "audio"],
                              defaults=[None, None, None, None])
+
+
+"""
+user.name == string with name
+user.com_interface == e.g. "mumble" or "telegram"
+user.raw_data == raw data from interface
+"""
+User = collections.namedtuple("User", ["name", "com_interface", "raw_data"])
+
+"""
+channel.name == string with channel name
+channel.com_interface == e.g. "mumble" or "telegram"
+channel.raw_data == raw data from interface
+"""
+Channel = collections.namedtuple("Channel", ["name", "com_interface", "raw_data"])

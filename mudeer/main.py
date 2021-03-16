@@ -6,6 +6,7 @@ import os
 import queue
 
 import mudeer.com
+import mudeer.skills
 import mudeer.voice.voice_deep_speech as voice_deep_speech
 import mudeer.commands as commands
 
@@ -30,9 +31,8 @@ class MuDeer():
         self.coms = mudeer.com.Coms({"mumble": config["mumble"]}, self.name,
                                     self.stt, self.queue_in, self.queue_out)
 
-        self.commands = commands.Command([self.name])
-
-        available_commands = self.commands.get_available_commands()
+        self.skills = mudeer.skills.Skills()  # TODO, queues, ...)
+        available_commands = self.skills.get_available_commands()
         self.stt.add_hot_words(available_commands)
         self.stt.add_hot_words([self.name.lower()], 20)
 
@@ -44,14 +44,14 @@ class MuDeer():
 
         # TODO save changes
 
-    def send_error(self, channel_id, message=None):
-        if message:
-            self.com.send_to_channels(channel_id, message)
-        else:
-            self.com.send_to_channels(channel_id, "Fatal Error")
+    # def send_error(self, channel_id, message=None):
+    #     if message:
+    #         self.com.send_to_channels(channel_id, message)
+    #     else:
+    #         self.com.send_to_channels(channel_id, "Fatal Error")
 
-    def excecute_command(self, command_items=[], channel_id=None, user=None):
-        pass
+    # def excecute_command(self, command_items=[], channel_id=None, user=None):
+    #     pass
     #     self.commands_to_process.extend(command_items)
     #     while True:
     #         try:
@@ -77,27 +77,28 @@ class MuDeer():
     #             tb = traceback.format_exc()
     #             self.log.error("Can not process Command {}.\nGot Exception: {}\n{}".format(command_item, e, tb))
 
-    def process_messages(self, item):
-        self.log.debug("Message ({}): {}".format(item.channel_id, item))
-        new_commands = self.commands.process_text(item.message)
-        self.log.debug("Message commands {}".format(new_commands))
-        self.excecute_command(new_commands, channel_id=item.channel_id)
+    # def process_messages(self, item):
+    #     self.log.debug("Message ({}): {}".format(item.channel_id, item))
+    #     new_commands = self.commands.process_text(item.message)
+    #     self.log.debug("Message commands {}".format(new_commands))
+    #     self.excecute_command(new_commands, channel_id=item.channel_id)
 
-    def process_users(self, user):
-        new_commands = self.commands.process_user(user)
-        self.log.debug("User commands {}".format(new_commands))
-        self.excecute_command(new_commands)
+    # def process_users(self, user):
+    #     new_commands = self.commands.process_user(user)
+    #     self.log.debug("User commands {}".format(new_commands))
+    #     self.excecute_command(new_commands)
 
-    def process_sound(self, user, sound_chunk):
-        text = self.voice.process_voice(user, sound_chunk)
-        new_commands = self.commands.process_text(text)
-        self.log.debug("Sound commands {}".format(new_commands))
-        self.excecute_command(new_commands)
+    # def process_sound(self, user, sound_chunk):
+    #     text = self.voice.process_voice(user, sound_chunk)
+    #     new_commands = self.commands.process_text(text)
+    #     self.log.debug("Sound commands {}".format(new_commands))
+    #     self.excecute_command(new_commands)
 
     def run(self):
         while True:
             time.sleep(0.01)
             self.coms.process()
+            self.skills.process()
 
             # if len(self.commands_to_process) > 0:
             #     self.excecute_command()

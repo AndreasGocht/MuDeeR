@@ -9,6 +9,7 @@ from pymumble_py3 import mumble_pb2
 
 import mudeer.message
 from mudeer.commands import Commands
+from mudeer.com.types import Types
 
 
 class Mumble(threading.Thread):
@@ -17,6 +18,7 @@ class Mumble(threading.Thread):
         self.log = logging.getLogger(__name__)
 
         self.com_id = com_id
+        self.com_type = Types.MUMBLE
 
         # name
         self.user_name = name
@@ -114,6 +116,7 @@ class Mumble(threading.Thread):
                 self.log.debug("follow user: {}".format(user))
                 message = mudeer.message.Out(self.com_id, Commands.MOVE_CHANNEL, None, None, user["channel_id"])
                 self.queue_out.put(message)
+        user = mudeer.message.User(user["name"], self.com_type, user)
         message = mudeer.message.In(self.com_id, user)
         self.queue_in.put(message)
 
@@ -121,10 +124,12 @@ class Mumble(threading.Thread):
         if (self.tag == text_message.message[:self.tag_len]):
             self.log.debug("received command: {}".format(text_message.message))
             user = text_message.actor
-            channel = text_message.channel_id
+            channel_id = text_message.channel_id
 
-            # TODO From Here
-            message = mudeer.message.In(self.com_id, user, text_message, channel)
+            user = mudeer.message.User(user["name"], self.com_type, user)
+            channel = mudeer.message.Channel(
+                self.bot.channels[channel_id]["name"], self.com_type, self.bot.channels[channel_id])
+            message = mudeer.message.In(self.com_id, user, text_message.message, channel)
             self.queue_in.put(message)
 
     def get_callback_sound(self, user, soundchunk):
@@ -183,6 +188,7 @@ class Mumble(threading.Thread):
 
         for data, user in to_process:
             text = self.stt.process_voice(user, data, 48000)
+            user = mudeer.message.User(user["name"], self.com_type, user)
             message = mudeer.message.In(self.com_id, user, text, None, data)
             self.queue_in.put(message)
 
