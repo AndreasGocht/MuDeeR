@@ -8,14 +8,22 @@ import json
 import datetime
 import time
 
+import mudeer.message
+from mudeer.commands import Commands
+
 
 def add_br(m):
     return m.group(1) + "<br/>"
 
 
 class Weisheiten():
-    def __init__(self):
+    def __init__(self, skill_main, queue_out):
         self.log = logging.getLogger(__name__)
+
+        self.skill_main = skill_main
+        self.queue_out = queue_out
+
+        self.special_user = "jesaa"
 
         self.database_path = os.path.realpath(__file__)
         self.database_path = os.path.splitext(self.database_path)[0] + ".json"
@@ -46,16 +54,6 @@ class Weisheiten():
         with open(self.database_path, "w") as f:
             json.dump(self.database, f, indent=4)
 
-    def command_types(self):
-        return ["text", "user"]
-
-    def command_text(self, command_text):
-        if "weisheit" in command_text.lower():
-            weisheit = random.choice(self.weisheiten)
-            return [("message", weisheit)]
-        else:
-            return [(None, None)]
-
     def send_today(self, name: str):
         last_date_time_stamp = self.database.get(name)
 
@@ -69,25 +67,39 @@ class Weisheiten():
         else:
             return False
 
-    def command_user(self, user):
-        self.log.debug("got user {}".format(user))
-        if user["name"] == "DerReiskocher":
-            if self.send_today(user["name"]):
-                return [(None, None)]
-            weisheit = random.choice(self.weisheiten)
-            commands = []
-            commands.append(("follow", user))
-            commands.append(("wait", 1))
-            commands.append(("message", "Hallo Felix, schön dich zu sehen<br/>Nur für dich eine Weisheit:"))
-            commands.append(("wait", 0.2))
-            commands.append(("message", weisheit))
-            commands.append(("follow", None))
-            return commands
-        else:
-            return [(None, None)]
-
-    def get_available_commands(self):
+    def get_inital_key_words(self):
         return ["weisheit"]
+
+    def get_inital_users(self):
+        return [self.special_user]
+
+    def process(self, in_message: mudeer.message.In):
+        if in_message.message:
+            if "weisheit" in in_message.message:
+                weisheit = random.choice(self.weisheiten)
+                out_message = mudeer.message.Out(
+                    in_message.com_source, Commands.SEND_MESSAGE, None, weisheit, in_message.channel)
+                self.queue_out.put(out_message)
+
+        elif in_message.user:
+            if in_message.user.name == self.special_user:
+                weisheit = random.choice(self.weisheiten)
+
+                out_message = mudeer.message.Out(in_message.com_source, Commands.FOLLOW, in_message.user)
+                self.queue_out.put(out_message)
+                time.sleep(1)
+
+                out_message = mudeer.message.Out(in_message.com_source, Commands.SEND_MESSAGE, None,
+                                                 "Hallo Felix, schön dich zu sehen<br/>Nur für dich eine Weisheit:")
+                self.queue_out.put(out_message)
+                time.sleep(0.2)
+
+                out_message = mudeer.message.Out(in_message.com_source, Commands.SEND_MESSAGE, None,
+                                                 weisheit)
+                self.queue_out.put(out_message)
+
+                out_message = mudeer.message.Out(in_message.com_source, Commands.FOLLOW, None)
+                self.queue_out.put(out_message)
 
     def gen_help(self):
         return ["weisheit - Eine Weisheit von Felix"]

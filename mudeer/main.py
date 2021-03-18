@@ -31,9 +31,9 @@ class MuDeer():
         self.coms = mudeer.com.Coms({"mumble": config["mumble"]}, self.name,
                                     self.stt, self.queue_in, self.queue_out)
 
-        self.skills = mudeer.skills.Skills()  # TODO, queues, ...)
-        available_commands = self.skills.get_available_commands()
-        self.stt.add_hot_words(available_commands)
+        self.skills = mudeer.skills.Skills(self.queue_in, self.queue_out)
+        get_available_key_words = self.skills.get_available_key_words()
+        self.stt.add_hot_words(get_available_key_words)
         self.stt.add_hot_words([self.name.lower()], 20)
 
     def connect(self):

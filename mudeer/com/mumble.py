@@ -72,8 +72,24 @@ class Mumble(threading.Thread):
 
     def process(self, message: mudeer.message.Out):
         if message.command == Commands.MOVE_CHANNEL:
-            self.move_to_id(message.channel)
-            # check if this works
+            self.move_to_channel(message.channel)
+        elif message.command == Commands.SEND_MESSAGE:
+            self.send_to_channel(message.message, message.channel)
+        elif message.command == Commands.FOLLOW:
+            self.update_follow(message.user)
+
+    def send_to_channel(self, message, channel: mudeer.message.Channel):
+        send_message = ""
+        if isinstance(message, list):
+            for elem in message:
+                send_message += "<br />" + elem
+        else:
+            send_message = message
+
+        if channel:
+            channel.raw_data.send_text_message(send_message)
+        else:
+            self.bot.my_channel().send_text_message(send_message)
 
     def move_to_name(self, channel_name):
         try:
@@ -84,21 +100,20 @@ class Mumble(threading.Thread):
         except pymumble.errors.UnknownChannelError as err:
             self.log.error(err)
 
-    def move_to_id(self, channel_id):
+    def move_to_channel(self, channel: mudeer.message.Channel):
         try:
-            channel = self.bot.channels[channel_id]
-            channel.move_in()
+            channel.raw_data.move_in()
             time.sleep(0.1)  # ok for now, but check for callback
-            self.log.debug("moved to channel {}".format(self.bot.my_channel()))
+            self.log.debug("moved to channel {}".format(channel))
         except pymumble.errors.UnknownChannelError as err:
             self.log.error(err)
 
     def move_home(self):
         self.move_to_name(self.home)
 
-    def update_follow(self, user):
+    def update_follow(self, user: mudeer.message.User):
         if user:
-            self.follow = user["name"]
+            self.follow = user.raw_data["name"]
         else:
             self.follow = None
         self.log.debug("follow user: {}".format(self.follow))
@@ -107,15 +122,20 @@ class Mumble(threading.Thread):
             self.move_home()
             self.log.debug("Move Home")
         else:
-            self.move_to_id(user["channel_id"])
+            channel = self.bot.channels[user.raw_data["channel_id"]]
+            channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+            self.move_to_channel(channel)
 
     def get_callback_user(self, user, changes=None):
         self.log.debug("received user change: {}".format(user))
         if self.follow:
             if user["name"] == self.follow:
                 self.log.debug("follow user: {}".format(user))
-                message = mudeer.message.Out(self.com_id, Commands.MOVE_CHANNEL, None, None, user["channel_id"])
+                channel = self.bot.channels[user["channel_id"]]
+                channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+                message = mudeer.message.Out(self.com_id, Commands.MOVE_CHANNEL, None, None, channel)
                 self.queue_out.put(message)
+
         user = mudeer.message.User(user["name"], self.com_type, user)
         message = mudeer.message.In(self.com_id, user)
         self.queue_in.put(message)
@@ -123,12 +143,12 @@ class Mumble(threading.Thread):
     def get_callback_text(self, text_message: mumble_pb2.TextMessage):
         if (self.tag == text_message.message[:self.tag_len]):
             self.log.debug("received command: {}".format(text_message.message))
-            user = text_message.actor
-            channel_id = text_message.channel_id
+
+            user = self.bot.users[text_message.actor]
+            channel = self.bot.channels[text_message.channel_id[0]]  # why ever this is a list (maybe global comm?)
 
             user = mudeer.message.User(user["name"], self.com_type, user)
-            channel = mudeer.message.Channel(
-                self.bot.channels[channel_id]["name"], self.com_type, self.bot.channels[channel_id])
+            channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
             message = mudeer.message.In(self.com_id, user, text_message.message, channel)
             self.queue_in.put(message)
 
@@ -136,7 +156,7 @@ class Mumble(threading.Thread):
         # I am pretty sure the GIL saves us:
         # `self.stream_frames` etc. is accessed by two threads (e.g. `check_audio`)
         session_id = user["session"]
-        #self.log.debug("Got something from {}".format(user["name"]))
+        # self.log.debug("Got something from {}".format(user["name"]))
 
         with self.stream_lock:
             if session_id not in self.stream_frames:
@@ -145,28 +165,6 @@ class Mumble(threading.Thread):
 
             self.stream_frames[session_id].append(numpy.frombuffer(soundchunk.pcm, numpy.int16))
             self.stream_last_frames[session_id] = time.time()  # soundchunk.timestamp does not work
-
-    def send_to_channels(self, channels, message):
-        send_message = ""
-        if isinstance(message, list):
-            for elem in message:
-                send_message += "<br />" + elem
-        else:
-            send_message = message
-
-        for channel_id in channels:
-            channel = self.bot.channels[channel_id]
-            channel.send_text_message(send_message)
-
-    def send_to_my_channel(self, message):
-        send_message = ""
-        if isinstance(message, list):
-            for elem in message:
-                send_message += "<br />" + elem
-        else:
-            send_message = message
-
-        self.bot.my_channel().send_text_message(send_message)
 
     def check_audio(self):
         # I am pretty sure the GIL saves us:
@@ -188,8 +186,11 @@ class Mumble(threading.Thread):
 
         for data, user in to_process:
             text = self.stt.process_voice(user, data, 48000)
-            user = mudeer.message.User(user["name"], self.com_type, user)
-            message = mudeer.message.In(self.com_id, user, text, None, data)
+            m_user = mudeer.message.User(user["name"], self.com_type, user)
+
+            channel = self.bot.channels[user["channel_id"]]
+            m_channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+            message = mudeer.message.In(self.com_id, m_user, text, m_channel, data)
             self.queue_in.put(message)
 
     def run(self):
