@@ -81,7 +81,7 @@ class Weisheiten():
                     in_message.com_source, Commands.SEND_MESSAGE, None, weisheit, in_message.channel)
                 self.queue_out.put(out_message)
 
-        elif in_message.user:
+        elif in_message.user and in_message.message is None:  # event infos are todo
             if in_message.user.name == self.special_user:
                 weisheit = random.choice(self.weisheiten)
 
