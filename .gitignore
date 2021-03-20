@@ -6,6 +6,10 @@ ssl_cert/
 *.scorer
 *.tar.gz
 __pycache__/
+*.json
+*.log
+*.sqlite
+mudeer.egg-info/
 
 # Development env
 .vscode/
