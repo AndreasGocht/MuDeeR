@@ -1,4 +1,5 @@
-etc/config.cfg
+config.cfg
+ssl_cert/
 *.wav
 *.wav.txt
 *.pbmm
