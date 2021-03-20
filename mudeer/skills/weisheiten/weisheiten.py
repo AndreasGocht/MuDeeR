@@ -23,7 +23,7 @@ class Weisheiten():
         self.skill_main = skill_main
         self.queue_out = queue_out
 
-        self.special_user = "jesaa"
+        self.special_user = "DerResikocher"
 
         self.database_path = os.path.realpath(__file__)
         self.database_path = os.path.splitext(self.database_path)[0] + ".json"

@@ -40,9 +40,14 @@ class Mumble(threading.Thread):
         self.speech_return_delay = settings.getfloat("speech_return_delay", 0.1)
         self.pymumble_loop_rate = settings.getfloat("pymumble_loop_rate", 0.05)
         self.follow = settings.get("follow", None)
+        self.cert_file = settings.get("cert_file", None)
+        self.key_file = settings.get("key_file", None)
+        self.log.debug("self.cert_file: {}".format(self.cert_file))
+        self.log.debug("self.key_file: {}".format(self.key_file))
 
         # set up
-        self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port, debug=False)
+        self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port,
+                                   certfile=self.cert_file, keyfile=self.key_file, debug=False)
         self.bot.set_receive_sound(1)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.get_callback_text)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_USERUPDATED, self.get_callback_user)
@@ -54,6 +59,12 @@ class Mumble(threading.Thread):
         self.stream_last_frames = {}
         self.stream_users = {}
 
+    def check_and_register(self):
+        if self.key_file:
+            if "user_id" not in self.bot.users.myself:
+                self.log.info("Registerd myself.")
+                self.bot.users.myself.register()
+
     def get_tag(self):
         return self.tag
 
@@ -62,6 +73,8 @@ class Mumble(threading.Thread):
         self.bot.is_ready()
         self.bot.set_loop_rate(self.pymumble_loop_rate)
         self.start()
+
+        self.check_and_register()
 
         self.log.debug("loop rate at: {}".format(self.bot.get_loop_rate()))
         self.move_home()
