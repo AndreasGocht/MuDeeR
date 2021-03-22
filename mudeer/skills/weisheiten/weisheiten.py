@@ -23,7 +23,7 @@ class Weisheiten():
         self.skill_main = skill_main
         self.queue_out = queue_out
 
-        self.special_user = "DerResikocher"
+        self.special_user = "DerReiskocher"
 
         self.database_path = os.path.realpath(__file__)
         self.database_path = os.path.splitext(self.database_path)[0] + ".json"
@@ -82,7 +82,7 @@ class Weisheiten():
                 self.queue_out.put(out_message)
 
         elif in_message.user and in_message.message is None:  # event infos are todo
-            if in_message.user.name == self.special_user:
+            if in_message.user.name == self.special_user and not self.send_today():
                 weisheit = random.choice(self.weisheiten)
 
                 out_message = mudeer.message.Out(in_message.com_source, Commands.FOLLOW, in_message.user)
