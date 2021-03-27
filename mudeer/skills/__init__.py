@@ -5,19 +5,24 @@ import queue
 import mudeer.message
 
 from .weisheiten import weisheiten
+from .channel import channel
 
-skill_list = [weisheiten.Weisheiten]
+skill_list = [weisheiten, channel]
 
 
 class Skills():
-    def __init__(self, queue_in, queue_out):
+    def __init__(self, name, queue_in, queue_out, stt, config):
         """
         @param names names, to identify the receiver string
         """
         self.log = logging.getLogger(__name__)
 
+        self.name = name
+
         self.queue_in = queue_in
         self.queue_out = queue_out
+
+        self.stt = stt
 
         self.error_message = _("Sorry, I could not understand you.<br />Please ask me for my included vocabulary.")
 
@@ -28,26 +33,31 @@ class Skills():
         self.users = collections.defaultdict(list)
 
         for skill in self.skill_list:
-            skill = skill(self, self.queue_out)
+            skill_name = skill.__name__.split(".")[-1]
+            skill_config = config["skills." + skill_name]
+            skill = skill.Skill(self, self.queue_out, skill_config)
             self.skills.append(skill)
 
             key_words = skill.get_inital_key_words()
             for k in key_words:
-                self.key_words[k].append(skill)
+                self.log.debug("add kyword {} for skill {}".format(k, skill))
+                self.register_key_word(skill, k)
 
             users = skill.get_inital_users()
             for u in users:
-                self.users[u].append(skill)
+                self.log.debug("add special user {} for skill {}".format(u, skill))
+                self.register_user(skill, u)
 
     def register_key_word(self, skill, key_word):
         self.key_words[key_word].append(skill)
+        self.stt.add_hot_words([key_word])
         # TODO update Keywords
 
     def unregister_key_word(self, skill, key_word):
         self.key_words[key_word].remove(skill)
         if len(self.key_words[key_word]) == 0:
             del self.key_words[key_word]
-            # TODO remove Keywords
+            self.stt.remove_hot_words([key_word])
 
     def register_user(self, skill, user_name):
         self.users[user_name].append(skill)
@@ -62,11 +72,14 @@ class Skills():
             message: mudeer.message.In = self.queue_in.get_nowait()
             skills_to_process = set()
             if message.message:
-                for k in self.key_words:
-                    if k in message.message:
-                        skills_to_process.update(self.key_words[k])
+                if self.name.lower() in message.message:
+                    for k in self.key_words:
+                        if k in message.message:
+                            skills_to_process.update(self.key_words[k])
             if message.user:
+                self.log.debug("got user {}".format(message.user.name))
                 if message.user.name in self.users:
+                    self.log.debug("user to process {}".format(message.user.name))
                     skills_to_process.update(self.users[message.user.name])
             for s in skills_to_process:
                 s.process(message)

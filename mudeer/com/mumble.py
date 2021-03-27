@@ -53,6 +53,12 @@ class Mumble(threading.Thread):
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_USERUPDATED, self.get_callback_user)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_USERCREATED, self.get_callback_user)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_SOUNDRECEIVED, self.get_callback_sound)
+        self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_CHANNELCREATED,
+                                        self.get_callback_channel_create)
+        self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_CHANNELUPDATED,
+                                        self.get_callback_channel_update)
+        self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_CHANNELREMOVED,
+                                        self.get_callback_channel_delete)
 
         self.stream_lock = threading.RLock()
         self.stream_frames = {}
@@ -90,6 +96,8 @@ class Mumble(threading.Thread):
             self.send_to_channel(message.message, message.channel)
         elif message.command == Commands.FOLLOW:
             self.update_follow(message.user)
+        elif message.command == Commands.MOVE_USER:
+            self.move_user(message.user, message.channel)
 
     def send_to_channel(self, message, channel: mudeer.message.Channel):
         send_message = ""
@@ -123,6 +131,9 @@ class Mumble(threading.Thread):
 
     def move_home(self):
         self.move_to_name(self.home)
+
+    def move_user(self, user, channel):
+        self.log.error("there is no function to move a user -.-")
 
     def update_follow(self, user: mudeer.message.User):
         if user:
@@ -178,6 +189,21 @@ class Mumble(threading.Thread):
 
             self.stream_frames[session_id].append(numpy.frombuffer(soundchunk.pcm, numpy.int16))
             self.stream_last_frames[session_id] = time.time()  # soundchunk.timestamp does not work
+
+    def get_callback_channel_create(self, channel):
+        user = mudeer.message.User(self.user_name, self.com_type, self.bot.users.myself)
+        channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+        message = mudeer.message.In(self.com_id, user, None, channel)
+        self.queue_in.put(message)
+
+    def get_callback_channel_update(self, channel, action):
+        user = mudeer.message.User(self.bot.users.myself["name"], self.com_type, self.bot.users.myself)
+        channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+        message = mudeer.message.In(self.com_id, user, None, channel)
+        self.queue_in.put(message)
+
+    def get_callback_channel_delete(self, channel):
+        self.log.error("deleting channels not implemented!")
 
     def check_audio(self):
         # I am pretty sure the GIL saves us:

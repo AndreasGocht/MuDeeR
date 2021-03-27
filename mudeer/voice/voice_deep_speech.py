@@ -32,6 +32,12 @@ class VoiceDeepSpeech():
                 self.log.debug("Add word \"{}\"".format(w))
                 self.deepspeech.addHotWord(w, boost)
 
+    def remove_hot_words(self, hot_words):
+        for word in hot_words:
+            for w in word.split(" "):  # ensure, that we do only have individual words
+                self.log.debug("Remove word \"{}\"".format(w))
+                self.deepspeech.eraseHotWord(w)
+
     def process_voice(self, user, sound_chunk, sample_rate: int):
         # resample for deepspeech
         self.log.debug("Got Voice from {}".format(user["name"]))

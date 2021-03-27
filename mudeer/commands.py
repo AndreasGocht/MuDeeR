@@ -10,3 +10,4 @@ class Commands(enum.Enum):
     MOVE_CHANNEL = 1
     FOLLOW = 2
     SEND_MESSAGE = 3
+    MOVE_USER = 4

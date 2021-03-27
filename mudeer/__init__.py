@@ -2,17 +2,22 @@ import configparser
 import pkg_resources
 import gettext
 import logging
+import argparse
+
 
 from mudeer.main import MuDeer
 
 
 def main():
-    config_file = pkg_resources.resource_filename(__name__, "/etc/config.cfg")
+    parser = argparse.ArgumentParser(description='MuDeeR')
+    parser.add_argument('-c', '--config', help='MuDeeRs config file', nargs=1, required=True)
+    args = parser.parse_args()
+    
     local_path = pkg_resources.resource_filename(__name__, "/locales")
 
     config = configparser.ConfigParser()
     try:
-        with open(config_file) as f:
+        with open(args.config[0]) as f:
             config.read_file(f)
     except FileNotFoundError as e:
         logging.fatal("did not find config file:\n{}".format(e))

@@ -16,8 +16,8 @@ def add_br(m):
     return m.group(1) + "<br/>"
 
 
-class Weisheiten():
-    def __init__(self, skill_main, queue_out):
+class Skill():
+    def __init__(self, skill_main, queue_out, config):
         self.log = logging.getLogger(__name__)
 
         self.skill_main = skill_main
@@ -25,8 +25,7 @@ class Weisheiten():
 
         self.special_user = "DerReiskocher"
 
-        self.database_path = os.path.realpath(__file__)
-        self.database_path = os.path.splitext(self.database_path)[0] + ".json"
+        self.database_path = os.path.realpath(config["data_json"])
         try:
             self.log.debug("Read database from {}".format(self.database_path))
             with open(self.database_path, "r") as f:
@@ -82,7 +81,7 @@ class Weisheiten():
                 self.queue_out.put(out_message)
 
         elif in_message.user and in_message.message is None:  # event infos are todo
-            if in_message.user.name == self.special_user and not self.send_today():
+            if in_message.user.name == self.special_user and not self.send_today(in_message.user.name):
                 weisheit = random.choice(self.weisheiten)
 
                 out_message = mudeer.message.Out(in_message.com_source, Commands.FOLLOW, in_message.user)

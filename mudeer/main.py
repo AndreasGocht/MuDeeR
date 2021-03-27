@@ -23,6 +23,7 @@ class MuDeer():
             config["deepspeech"]["scorer"],
             config["deepspeech"]["record_wav"].lower() == "true",
             config["deepspeech"]["record_user"].split(","))
+        self.stt.add_hot_words([self.name.lower()], 20)
 
         self.log.debug("Init Mumble")
 
@@ -31,10 +32,7 @@ class MuDeer():
         self.coms = mudeer.com.Coms({"mumble": config["mumble"]}, self.name,
                                     self.stt, self.queue_in, self.queue_out)
 
-        self.skills = mudeer.skills.Skills(self.queue_in, self.queue_out)
-        get_available_key_words = self.skills.get_available_key_words()
-        self.stt.add_hot_words(get_available_key_words)
-        self.stt.add_hot_words([self.name.lower()], 20)
+        self.skills = mudeer.skills.Skills(self.name, self.queue_in, self.queue_out, self.stt, config)
 
     def connect(self):
         self.coms.connect()
