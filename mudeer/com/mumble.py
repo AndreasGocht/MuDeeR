@@ -132,8 +132,9 @@ class Mumble(threading.Thread):
     def move_home(self):
         self.move_to_name(self.home)
 
-    def move_user(self, user, channel):
-        self.log.error("there is no function to move a user -.-")
+    def move_user(self, user: mudeer.message.User, channel: mudeer.message.Channel):
+        channel.raw_data.move_in(user.raw_data["session"])
+        self.log.debug("move user {} to channel {}".format(user.name, channel.name))
 
     def update_follow(self, user: mudeer.message.User):
         if user:
