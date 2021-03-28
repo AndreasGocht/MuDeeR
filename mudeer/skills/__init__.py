@@ -72,9 +72,11 @@ class Skills():
             message: mudeer.message.In = self.queue_in.get_nowait()
             skills_to_process = set()
             if message.message:
-                if self.name.lower() in message.message:
+                if self.name.lower() in message.message.lower():
+                    self.log.debug("got message {}".format(message.message))
                     for k in self.key_words:
                         if k in message.message:
+                            self.log.debug("keyword to process {}".format(k))
                             skills_to_process.update(self.key_words[k])
             if message.user:
                 self.log.debug("got user {}".format(message.user.name))

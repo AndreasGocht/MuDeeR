@@ -46,12 +46,12 @@ class Skill():
             if "verschiebe" in in_message.message and "kanal" in in_message.message:
                 channel_found = False
                 for ch_name in self.channels:
-                    if ch_name in in_message.message:
+                    if in_message.message.endswith(ch_name):
                         channel_found = True
                         com_dst = self.channels_com_src[ch_name]
                         ch = self.channels[ch_name]
                         out_msg = mudeer.message.Out(com_dst, Commands.MOVE_USER, in_message.user, None, ch)
-                        self.queue_out(out_msg)
+                        self.queue_out.put(out_msg)
                 if not channel_found:
                     self.log.error("did not found a known channel in the message \"{}\"".format(in_message.message))
                     self.log.error("known channels are: \"{}\"".format(self.channels.keys()))
