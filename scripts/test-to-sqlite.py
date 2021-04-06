@@ -26,11 +26,11 @@ def main():
             data = f.readline()
             sql_data.append((w, data, 0))
 
-    # c.execute("""CREATE TABLE IF NOT EXISTS files (
-    #     file TEXT PRIMARY KEY,
-    #     text TEXT,
-    #     corrected INTEGER
-    #     );""")
+    c.execute("""CREATE TABLE IF NOT EXISTS files (
+        file TEXT PRIMARY KEY,
+        text TEXT,
+        corrected INTEGER
+        );""")
 
     c.executemany('INSERT INTO files VALUES (?,?,?)', sql_data)
 
