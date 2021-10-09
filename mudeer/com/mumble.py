@@ -17,6 +17,7 @@ class Mumble(threading.Thread):
     processes any Message (Text or speach) and forwards it to the Message pipeline.
     Speech is also processed to text, unsing TTS (e.g. DeepSpeech)
     """
+
     def __init__(self, com_id: int, settings: dict, name: str, stt, queue_in, queue_out):
         super().__init__()
         self.log = logging.getLogger(__name__)

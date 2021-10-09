@@ -29,7 +29,7 @@ class MuDeer():
 
         self.queue_in = queue.Queue()
         self.queue_out = queue.Queue()
-        self.coms = mudeer.com.Coms({"mumble": config["mumble"]}, self.name,
+        self.coms = mudeer.com.Coms({"mumble": config["mumble"], "telegram": config["telegram"]}, self.name,
                                     self.stt, self.queue_in, self.queue_out)
 
         self.skills = mudeer.skills.Skills(self.name, self.queue_in, self.queue_out, self.stt, config)

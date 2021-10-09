@@ -2,7 +2,9 @@ import logging
 import queue
 
 import mudeer.com.mumble as mumble
-from mudeer.commands import Commands
+import mudeer.com.telegram as telegram
+
+import mudeer.message
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +30,9 @@ class Coms():
             if com == "mumble":
                 com_id = len(self._coms)
                 self._coms.append(mumble.Mumble(com_id, settings, name, stt, queue_in, queue_out))
+            elif com == "telegram":
+                com_id = len(self._coms)
+                self._coms.append(telegram.Telegram(com_id, settings, name, stt, queue_in, queue_out))
             else:
                 log.error("Not interface for com \"{}\". Ignoring".format(com))
 

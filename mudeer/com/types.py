@@ -5,4 +5,5 @@ class Types(enum.Enum):
     """
     avalibale com types
     """
-    MUMBLE = 1
+    MUMBLE = 1,
+    TELEGRAM = 2

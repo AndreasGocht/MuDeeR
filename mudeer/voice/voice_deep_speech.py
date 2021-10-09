@@ -55,6 +55,18 @@ class VoiceDeepSpeech():
         self.write_wav(user["name"], sound_chunk, text)
         return text
 
+    def process_voice_raw(self, user, sound_chunk):
+        # resample for deepspeech
+        self.log.debug("Got Voice from {}".format(user["name"]))
+
+        # sst
+        text = self.deepspeech.stt(sound_chunk)
+        self.log.debug("Understood ({}): {}".format(user["name"], text))
+        # self.com.send_to_my_channel(text)
+
+        self.write_wav(user["name"], sound_chunk, text)
+        return text
+
     def write_wav(self, user_name, data, text):
         if self.record_wav:
             if user_name in self.record_user:
