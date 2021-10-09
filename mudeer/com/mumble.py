@@ -13,6 +13,10 @@ from mudeer.com.types import Types
 
 
 class Mumble(threading.Thread):
+    """
+    processes any Message (Text or speach) and forwards it to the Message pipeline.
+    Speech is also processed to text, unsing TTS (e.g. DeepSpeech)
+    """
     def __init__(self, com_id: int, settings: dict, name: str, stt, queue_in, queue_out):
         super().__init__()
         self.log = logging.getLogger(__name__)
@@ -22,9 +26,6 @@ class Mumble(threading.Thread):
 
         # name
         self.user_name = name
-        self.bot_name = self.user_name + "Bot"
-        self.tag = "@" + self.user_name
-        self.tag_len = len(self.tag)
 
         # stt
         self.stt = stt
@@ -46,7 +47,8 @@ class Mumble(threading.Thread):
         self.log.debug("self.key_file: {}".format(self.key_file))
 
         # set up
-        self.bot = pymumble.Mumble(self.host, self.bot_name, port=self.port,
+        self.log.debug("log into mumule server {}:{} with name {}".format(self.host, self.port, self.user_name))
+        self.bot = pymumble.Mumble(self.host, self.user_name, port=self.port,
                                    certfile=self.cert_file, keyfile=self.key_file, debug=False)
         self.bot.set_receive_sound(1)
         self.bot.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.get_callback_text)
@@ -90,6 +92,7 @@ class Mumble(threading.Thread):
         self.bot.stop()
 
     def process(self, message: mudeer.message.Out):
+        self.log.debug("got command {}".format(message.command))
         if message.command == Commands.MOVE_CHANNEL:
             self.move_to_channel(message.channel)
         elif message.command == Commands.SEND_MESSAGE:
@@ -166,16 +169,15 @@ class Mumble(threading.Thread):
         self.queue_in.put(message)
 
     def get_callback_text(self, text_message: mumble_pb2.TextMessage):
-        if (self.tag == text_message.message[:self.tag_len]):
-            self.log.debug("received command: {}".format(text_message.message))
+        self.log.debug("received command: {}".format(text_message.message))
 
-            user = self.bot.users[text_message.actor]
-            channel = self.bot.channels[text_message.channel_id[0]]  # why ever this is a list (maybe global comm?)
+        user = self.bot.users[text_message.actor]
+        channel = self.bot.channels[text_message.channel_id[0]]  # why ever this is a list (maybe global comm?)
 
-            user = mudeer.message.User(user["name"], self.com_type, user)
-            channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
-            message = mudeer.message.In(self.com_id, user, text_message.message, channel)
-            self.queue_in.put(message)
+        user = mudeer.message.User(user["name"], self.com_type, user)
+        channel = mudeer.message.Channel(channel["name"], self.com_type, channel)
+        message = mudeer.message.In(self.com_id, user, text_message.message, channel)
+        self.queue_in.put(message)
 
     def get_callback_sound(self, user, soundchunk):
         # I am pretty sure the GIL saves us:

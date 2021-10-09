@@ -22,7 +22,8 @@ class VoiceDeepSpeech():
                     pass
 
         self.deepspeech = deepspeech.Model(model_path)
-        self.deepspeech.enableExternalScorer(scorer_path)
+        if scorer_path:
+            self.deepspeech.enableExternalScorer(scorer_path)
         self.log.debug("Init compleat")
 
     def add_hot_words(self, hot_words, boost=15.0):
