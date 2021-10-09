@@ -22,22 +22,28 @@ class VoiceDeepSpeech():
                     pass
 
         self.deepspeech = deepspeech.Model(model_path)
+
+        self.scorer_enabled = False
         if scorer_path:
             self.deepspeech.enableExternalScorer(scorer_path)
+            self.scorer_enabled = True
+
         self.log.debug("Init compleat")
 
     def add_hot_words(self, hot_words, boost=15.0):
-        for word in hot_words:
-            # 15 seems to be recommended: https://discourse.mozilla.org/t/how-can-i-know-what-boost-value-to-give-for-a-particular-hot-word/73869/6
-            for w in word.split(" "):  # ensure, that we do only have individual words
-                self.log.debug("Add word \"{}\"".format(w))
-                self.deepspeech.addHotWord(w, boost)
+        if self.scorer_enabled:
+            for word in hot_words:
+                # 15 seems to be recommended: https://discourse.mozilla.org/t/how-can-i-know-what-boost-value-to-give-for-a-particular-hot-word/73869/6
+                for w in word.split(" "):  # ensure, that we do only have individual words
+                    self.log.debug("Add word \"{}\"".format(w))
+                    self.deepspeech.addHotWord(w, boost)
 
     def remove_hot_words(self, hot_words):
-        for word in hot_words:
-            for w in word.split(" "):  # ensure, that we do only have individual words
-                self.log.debug("Remove word \"{}\"".format(w))
-                self.deepspeech.eraseHotWord(w)
+        if self.scorer_enabled:
+            for word in hot_words:
+                for w in word.split(" "):  # ensure, that we do only have individual words
+                    self.log.debug("Remove word \"{}\"".format(w))
+                    self.deepspeech.eraseHotWord(w)
 
     def process_voice(self, user, sound_chunk, sample_rate: int):
         # resample for deepspeech
